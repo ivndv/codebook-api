@@ -44,17 +44,21 @@ Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren
 ```plaintext
 codebook-api/
 ├── app/
-│   ├── __init__.py      → paquete
-│   ├── main.py          → FastAPI: /health y /summarize
-│   ├── config.py        → settings (pydantic-settings)
-│   ├── ai.py            → cliente Groq + summarize()
-│   └── rate_limit.py    → limitador por IP
-├── tests/               → pytest (IA mockeada)
-├── requirements.txt     → dependencias de producción
-├── requirements-dev.txt → + pytest, ruff, httpx
-├── pyproject.toml       → config de ruff y pytest
-├── .env.example         → plantilla de variables
-└── .github/workflows/   → CI (ruff + pytest)
+│   ├── main.py                  → crea la app, CORS y monta los routers
+│   ├── core/config.py           → settings (pydantic-settings)
+│   ├── routers/
+│   │   ├── health.py            → GET /health
+│   │   └── summarize.py         → POST /summarize
+│   ├── schemas/summarize.py     → PeticionResumen · RespuestaResumen
+│   ├── services/ia.py           → cliente Groq + resumir_codigo()
+│   └── dependencies/security.py → X-API-Key + rate limit por IP
+├── tests/                       → pytest (IA mockeada)
+├── Makefile                     → make dev / test / lint / format / docs
+├── requirements.txt             → dependencias de producción
+├── requirements-dev.txt         → + pytest, ruff, httpx
+├── pyproject.toml               → config de ruff y pytest
+├── .env.example                 → plantilla de variables
+└── .github/workflows/           → CI (ruff + pytest)
 ```
 
 ---
@@ -64,18 +68,17 @@ codebook-api/
 Todos los comandos usan el entorno virtual `.venv`:
 
 ```bash
-# Crear el entorno
+# Con el Makefile (recomendado)
+make dev      # servidor con recarga
+make test     # tests
+make lint     # ruff check + format --check
+make docs     # abre Swagger
+
+# O a mano
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
-
-# Servidor de desarrollo
 .venv/bin/uvicorn app.main:app --reload
-
-# Lint y formato
 .venv/bin/ruff check .
-.venv/bin/ruff format .
-
-# Tests
 .venv/bin/pytest -q
 ```
 
@@ -113,6 +116,6 @@ python3 -m venv .venv
 | :--- | :--- | :--- |
 | **F8.0** | Scaffolding (estructura, ruff, docs, CI) | ✅ |
 | **F8.1** | API + Groq (`/summarize` real) | ⏳ |
-| **F8.2** | Rate limit + seguridad (`X-API-Key`, CORS) | ⏳ |
+| **F8.2** | Rate limit + seguridad (`X-API-Key`, CORS) | ✅ |
 | **F8.3** | Deploy en Railway (+ Serverless) | ⏳ |
 | **F8.4** | Conectar el front (retry + mock → real) | ⏳ |

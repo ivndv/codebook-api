@@ -29,6 +29,18 @@ curl -X POST http://localhost:8000/summarize \
   -d '{"code": "def suma(a, b):\n    return a + b"}'
 ```
 
+## Estructura
+
+```plaintext
+app/
+├── main.py                  → crea la app, CORS y monta los routers
+├── core/config.py           → settings (pydantic-settings)
+├── routers/                 → health.py · summarize.py
+├── schemas/                 → PeticionResumen · RespuestaResumen
+├── services/ia.py           → cliente Groq + resumir_codigo()
+└── dependencies/security.py → X-API-Key + rate limit por IP
+```
+
 ## Tecnologías Utilizadas
 
 - **Framework**: FastAPI + Uvicorn
@@ -65,8 +77,17 @@ ALLOWED_ORIGINS=http://localhost:3000
 4. **Iniciar el Proyecto**:
 
 ```bash
+# Con el Makefile (recomendado)
+make dev      # servidor con recarga en http://localhost:8000
+make test     # tests
+make lint     # ruff
+make docs     # abre Swagger
+
+# O a mano
 .venv/bin/uvicorn app.main:app --reload
 ```
+
+La documentación interactiva (Swagger) queda en **http://localhost:8000/docs**.
 
 ## Despliegue
 

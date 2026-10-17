@@ -5,13 +5,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Clave de Groq (secreta: solo vive aquí)
+    # Clave de la IA (secreta: solo vive aquí)
     groq_api_key: str = ""
 
-    # Secreto compartido con el front (header X-API-Key)
+    # Secreto compartido con el front (header X-API-Key).
+    # Si está vacío NO se exige (solo para desarrollo local).
     codebook_api_key: str = ""
 
-    # Modelo de Groq (compatible con el SDK de OpenAI)
+    # Proveedor de IA (compatible con el SDK de OpenAI)
+    groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_model: str = "openai/gpt-oss-20b"
 
     # Límites
