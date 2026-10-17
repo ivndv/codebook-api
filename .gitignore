@@ -1,0 +1,23 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Pruebas y linters
+.pytest_cache/
+.ruff_cache/
+
+# Entorno (secretos) — la plantilla SÍ se versiona
+.env
+.env.*
+!.env.example
+
+# Railway
+.railway/
+
+# Sistema
+.DS_Store
