@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     # Proveedor de IA (compatible con el SDK de OpenAI)
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_model: str = "openai/gpt-oss-20b"
+    # Menor que el timeout de 10 s del frontend para que el 504 llegue antes
+    groq_timeout_seconds: float = 8.0
 
     # Límites
-    rate_limit_per_min: int = 10
-    rate_limit_per_day: int = 100
     max_code_length: int = 10_000
 
     # CORS: orígenes permitidos (separados por coma)

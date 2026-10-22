@@ -27,27 +27,13 @@ def test_api_key_incorrecta(monkeypatch) -> None:
 
 def test_api_key_correcta(monkeypatch) -> None:
     """Con la X-API-Key correcta pasa."""
+
+    async def resumen_falso(code: str) -> tuple[str, str | None]:
+        return "Imprime un uno.", "python"
+
     monkeypatch.setattr(settings, "codebook_api_key", "secreto")
-    monkeypatch.setattr(
-        router_summarize, "resumir_codigo", lambda code: ("Imprime un uno.", "python")
-    )
+    monkeypatch.setattr(router_summarize, "resumir_codigo", resumen_falso)
 
     res = client.post("/summarize", json={"code": "print(1)"}, headers={"X-API-Key": "secreto"})
 
     assert res.status_code == 200
-
-
-def test_rate_limit(monkeypatch) -> None:
-    """Al pasarse del límite por minuto devuelve 429 con Retry-After."""
-    monkeypatch.setattr(settings, "rate_limit_per_min", 2)
-    monkeypatch.setattr(
-        router_summarize, "resumir_codigo", lambda code: ("Imprime un uno.", "python")
-    )
-
-    assert client.post("/summarize", json={"code": "print(1)"}).status_code == 200
-    assert client.post("/summarize", json={"code": "print(1)"}).status_code == 200
-
-    res = client.post("/summarize", json={"code": "print(1)"})
-
-    assert res.status_code == 429
-    assert "Retry-After" in res.headers

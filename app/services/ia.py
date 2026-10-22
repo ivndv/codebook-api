@@ -2,7 +2,7 @@
 import json
 from functools import lru_cache
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from app.core.config import settings
 
@@ -20,16 +20,23 @@ _INSTRUCCIONES = (
 
 
 @lru_cache(maxsize=1)
-def _cliente() -> OpenAI:
+def _cliente() -> AsyncOpenAI:
     """Crea el cliente una sola vez (perezoso: no falla si aún no hay key)."""
     if not settings.groq_api_key:
         raise RuntimeError("Falta GROQ_API_KEY")
-    return OpenAI(base_url=settings.groq_base_url, api_key=settings.groq_api_key)
+
+    # Sin reintentos internos: el frontend ya reintenta la llamada
+    return AsyncOpenAI(
+        base_url=settings.groq_base_url,
+        api_key=settings.groq_api_key,
+        timeout=settings.groq_timeout_seconds,
+        max_retries=0,
+    )
 
 
-def resumir_codigo(code: str) -> tuple[str, str | None]:
+async def resumir_codigo(code: str) -> tuple[str, str | None]:
     """Pide a la IA un resumen de una línea y el lenguaje detectado."""
-    respuesta = _cliente().chat.completions.create(
+    respuesta = await _cliente().chat.completions.create(
         model=settings.groq_model,
         messages=[
             {"role": "system", "content": _SISTEMA},

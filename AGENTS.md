@@ -29,13 +29,13 @@ Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren
 | :--- | :--- | :--- |
 | **Framework** | **FastAPI** | ASGI, async, OpenAPI automático |
 | **Servidor** | **Uvicorn** | `--host 0.0.0.0 --port $PORT` |
-| **IA** | **Groq** vía SDK `openai` | `base_url=https://api.groq.com/openai/v1` |
+| **IA** | **Groq** vía SDK `openai` | `AsyncOpenAI` + `base_url=https://api.groq.com/openai/v1` |
 | **Modelo** | `openai/gpt-oss-20b` | Rápido y barato (free: 1.000 req/día) |
 | **Config** | **pydantic-settings** | Variables de entorno tipadas |
 | **Tests** | **pytest** + httpx | IA mockeada (no gasta cuota) |
 | **Lint/Formato** | **ruff** | `line-length 100` |
 | **Deploy** | **Railway** | Con **Serverless** (duerme por inactividad) |
-| **Python** | 3.11+ | `.python-version` fija 3.13 |
+| **Python** | 3.15.1 | `.python-version` fija 3.15.1 |
 
 ---
 
@@ -51,7 +51,7 @@ codebook-api/
 │   │   └── summarize.py         → POST /summarize
 │   ├── schemas/summarize.py     → PeticionResumen · RespuestaResumen
 │   ├── services/ia.py           → cliente Groq + resumir_codigo()
-│   └── dependencies/security.py → X-API-Key + rate limit por IP
+│   └── dependencies/security.py → X-API-Key
 ├── tests/                       → pytest (IA mockeada)
 ├── Makefile                     → make dev / test / lint / format / docs
 ├── requirements.txt             → dependencias de producción
@@ -102,20 +102,11 @@ python3 -m venv .venv
 * **La clave de Groq NUNCA sale de este servicio.** El front jamás la conoce.
 * **Los tests NO llaman a Groq de verdad** → siempre mockeado.
 * **`/health` debe ser ultraligero** (sin tocar la IA): lo usa el monitoreo y el anti-pausa.
-* **El invitado puede usar `/summarize`** (el rate limit protege la cuota), pero **el guardado ocurre en el front**.
+* **El invitado puede usar `/summarize`** (el rate limit vive en el frontend), pero **el guardado ocurre en el front**.
+* **El rate limit por usuario o IP no vive en este microservicio**: lo aplica Next.js con Upstash.
 
 ### 6.4 Flujo de Git
 
 * **PROHIBIDO hacer commits o push sin la aprobación explícita del usuario.**
 * **Flujo de ramas:** desarrollo en `develop`; merge a `main` solo tras aprobación.
 * **Mensajes de commit:** *Conventional Commits* en minúsculas y español (`feat: …`, `fix: …`, `chore: …`).
-
-### 6.5 Fases del Proyecto
-
-| Fase | Alcance | Estado |
-| :--- | :--- | :--- |
-| **F8.0** | Scaffolding (estructura, ruff, docs, CI) | ✅ |
-| **F8.1** | API + Groq (`/summarize` real) | ⏳ |
-| **F8.2** | Rate limit + seguridad (`X-API-Key`, CORS) | ✅ |
-| **F8.3** | Deploy en Railway (+ Serverless) | ⏳ |
-| **F8.4** | Conectar el front (retry + mock → real) | ⏳ |

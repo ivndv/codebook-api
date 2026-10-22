@@ -2,11 +2,11 @@
 name = "codebook-api"
 version = "0.1.0"
 description = "Microservicio de resúmenes de código con IA (FastAPI + Groq)"
-requires-python = ">=3.11"
+requires-python = ">=3.15"
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py315"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

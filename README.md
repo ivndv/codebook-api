@@ -10,7 +10,9 @@ Existe para **aislar la clave de la IA** del frontend: el navegador nunca conoce
 
 - **Resumen con IA**: `POST /summarize` devuelve `{ explanation, language }`.
 - **Salud**: `GET /health` ultraligero, para monitoreo y para evitar la pausa por inactividad.
-- **Rate limiting**: límite por IP (peticiones por minuto y por día).
+- **Rate limiting delegado**: el frontend (Next.js + Upstash) limita por usuario o IP.
+- **Cliente async de Groq**: `AsyncOpenAI` sin bloquear el event loop.
+- **Errores de IA claros**: `429`, `503` y `504` según el fallo de Groq.
 - **Autenticación simple**: secreto compartido en el header `X-API-Key`.
 - **Documentación automática**: Swagger/OpenAPI en `/docs`.
 - **Tests sin gastar cuota**: la IA va mockeada en pytest.
@@ -38,11 +40,12 @@ app/
 ├── routers/                 → health.py · summarize.py
 ├── schemas/                 → PeticionResumen · RespuestaResumen
 ├── services/ia.py           → cliente Groq + resumir_codigo()
-└── dependencies/security.py → X-API-Key + rate limit por IP
+└── dependencies/security.py → X-API-Key
 ```
 
 ## Tecnologías Utilizadas
 
+- **Python**: 3.15.1 (`.python-version`)
 - **Framework**: FastAPI + Uvicorn
 - **IA**: Groq (`openai/gpt-oss-20b`) mediante el SDK de OpenAI
 - **Config**: pydantic-settings (variables de entorno tipadas)
@@ -65,12 +68,20 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
 ```
 
+También puedes usar `uv`:
+
+```bash
+uv venv --python 3.15.1
+uv pip install -r requirements-dev.txt
+```
+
 3. **Variables de Entorno**: copia `.env.example` a `.env` y rellena los valores.
 
 ```env
 GROQ_API_KEY=tu_clave_de_groq
 CODEBOOK_API_KEY=tu_secreto_compartido
 GROQ_MODEL=openai/gpt-oss-20b
+GROQ_TIMEOUT_SECONDS=8
 ALLOWED_ORIGINS=http://localhost:3000
 ```
 
@@ -91,7 +102,7 @@ La documentación interactiva (Swagger) queda en **http://localhost:8000/docs**.
 
 ## Despliegue
 
-Desplegado en **Railway** con **Serverless** activado (el servicio duerme cuando no se usa, para que quepa en el plan gratuito). El front reintenta automáticamente la primera petición tras el "despertar".
+Desplegado en **Railway** con **Serverless** activado (el servicio duerme cuando no se usa, para que quepa en el plan gratuito). Railway toma la versión de `.python-version` (**3.15.1**). El front reintenta automáticamente la primera petición tras el "despertar".
 
 ## Licencia
 
