@@ -72,3 +72,22 @@ jobs:
       # 4. Ejecuta los tests (Groq va mockeado: no gasta cuota)
       - name: Run tests
         run: pytest -q
+
+  # Job 3: despliegue en el VPS con Dokploy (solo push a main)
+  deploy:
+    name: Deploy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via Dokploy API
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            curl -X POST 'http://localhost:3000/api/application.deploy' \
+              -H 'Content-Type: application/json' \
+              -H 'x-api-key: ${{ secrets.DOKPLOY_API_TOKEN }}' \
+              -d '{"applicationId": "${{ secrets.DOKPLOY_CODEBOOK_API_ID }}"}'
