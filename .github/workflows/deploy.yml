@@ -1,0 +1,112 @@
+# codebook-api CD: despliegue manual a Railway (solo main)
+name: codebook-api Deploy
+
+# Disparo manual desde la pestaña Actions
+on:
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: "Ambiente de Railway"
+        type: choice
+        options:
+          - production
+        default: production
+
+# Un solo deploy a la vez, sin cancelar el que esté corriendo
+concurrency:
+  group: deploy-railway-${{ github.event.inputs.ambiente }}
+  cancel-in-progress: false
+
+# Permisos mínimos: solo lectura del repositorio
+permissions:
+  contents: read
+
+# Nombre del servicio en Railway
+env:
+  RAILWAY_SERVICE: codebook-api
+
+jobs:
+  # Job 1: lint y formato con ruff
+  lint:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.15.1"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format check
+        run: ruff format --check .
+
+  # Job 2: pruebas con pytest
+  test:
+    name: Pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.15.1"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest -q
+
+  # Job 3: deploy manual a Railway, solo desde main
+  deploy:
+    name: Railway
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Opcional: agrega reviewers en Settings > Environments > production
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      # RAILWAY_TOKEN es un Project Token con scope al ambiente production
+      # RAILWAY_PROJECT_ID es una repository variable obligatoria en CI
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT: ${{ inputs.ambiente }}
+        run: |
+          if [ -z "$RAILWAY_PROJECT_ID" ]; then
+            echo "Falta la repository variable RAILWAY_PROJECT_ID"
+            exit 1
+          fi
+          railway up --ci \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --service "$RAILWAY_SERVICE" \
+            --message "$GITHUB_SHA"
+
+      # Opcional: define la repository variable RAILWAY_URL para validar el deploy
+      - name: Smoke test
+        if: vars.RAILWAY_URL != ''
+        env:
+          RAILWAY_URL: ${{ vars.RAILWAY_URL }}
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "$RAILWAY_URL/health"
+          curl -fsS -o /dev/null --retry 5 --retry-delay 5 --retry-all-errors "$RAILWAY_URL/docs"
