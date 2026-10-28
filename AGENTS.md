@@ -8,16 +8,17 @@ Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren
 
 **codebook-api** es un microservicio en **Python (FastAPI)** que recibe un fragmento de código y devuelve un **resumen de una línea** generado con IA, más el lenguaje detectado.
 
-* **Propósito:** Aislar la **clave de la IA** y la llamada al modelo del frontend.
+* **Propósito:** aislar la **clave de la IA** y la llamada al modelo del frontend.
 * **Consumidor único:** el backend de `codebook` (Next.js), vía `POST /summarize`.
-* **Documentación de diseño:** `../codebook-api.md`.
+* **Documentación de arquitectura:** [`docs/diseno-y-arquitectura.md`](docs/diseno-y-arquitectura.md).
 * **Repositorio:** `codebook-api` · **Front:** `codebook`.
 
 ---
 
 ## 2. Antes de Tocar Código
 
-* **Documentación de FastAPI:** https://fastapi.tiangolo.com/
+* **Documentación de arquitectura:** lee `docs/diseno-y-arquitectura.md` antes de cambios estructurales.
+* **FastAPI:** https://fastapi.tiangolo.com/
 * **Groq (compatible con el SDK de OpenAI):** https://console.groq.com/docs/openai
 * **Uso del MCP CodeGraph:** antes de búsquedas masivas, usa `codegraph_explore` con `projectPath: "/home/ivan/software-dev/codebook-api"`.
 
@@ -34,7 +35,7 @@ Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren
 | **Config** | **pydantic-settings** | Variables de entorno tipadas |
 | **Tests** | **pytest** + httpx | IA mockeada (no gasta cuota) |
 | **Lint/Formato** | **ruff** | `line-length 100` |
-| **Deploy** | **Railway** | Con **Serverless** (duerme por inactividad) |
+| **Deploy** | **Railway** | Manual vía GitHub Actions; **Serverless** activo |
 | **Python** | 3.15.1 | `.python-version` fija 3.15.1 |
 
 ---
@@ -51,14 +52,16 @@ codebook-api/
 │   │   └── summarize.py         → POST /summarize
 │   ├── schemas/summarize.py     → PeticionResumen · RespuestaResumen
 │   ├── services/ia.py           → cliente Groq + resumir_codigo()
-│   └── dependencies/security.py → X-API-Key
-├── tests/                       → pytest (IA mockeada)
+│   └── dependencies/security.py → verificación de X-API-Key
+├── tests/                       → 11 pruebas pytest (IA mockeada)
+├── docs/                        → documentación de arquitectura
 ├── Makefile                     → make dev / test / lint / format / docs
 ├── requirements.txt             → dependencias de producción
 ├── requirements-dev.txt         → + pytest, ruff, httpx
 ├── pyproject.toml               → config de ruff y pytest
+├── Dockerfile                   → imagen sin privilegios + healthcheck
 ├── .env.example                 → plantilla de variables
-└── .github/workflows/           → CI (ruff + pytest)
+└── .github/workflows/           → CI (ruff + pytest) + CD manual (Railway)
 ```
 
 ---
@@ -69,10 +72,13 @@ Todos los comandos usan el entorno virtual `.venv`:
 
 ```bash
 # Con el Makefile (recomendado)
-make dev      # servidor con recarga
-make test     # tests
-make lint     # ruff check + format --check
-make docs     # abre Swagger
+make dev          # servidor con recarga
+make test         # pytest
+make lint         # ruff check + format --check
+make format       # ruff format
+make docs         # abre Swagger
+make docker-build # imagen local
+make docker-run   # contenedor con .env
 
 # O a mano
 python3 -m venv .venv
@@ -102,11 +108,33 @@ python3 -m venv .venv
 * **La clave de Groq NUNCA sale de este servicio.** El front jamás la conoce.
 * **Los tests NO llaman a Groq de verdad** → siempre mockeado.
 * **`/health` debe ser ultraligero** (sin tocar la IA): lo usa el monitoreo y el anti-pausa.
-* **El invitado puede usar `/summarize`** (el rate limit vive en el frontend), pero **el guardado ocurre en el front**.
-* **El rate limit por usuario o IP no vive en este microservicio**: lo aplica Next.js con Upstash.
+* **El rate limit por usuario o IP no vive aquí**: lo aplica Next.js con Upstash.
+* **Todo fallo de la IA se traduce a un código HTTP explícito** (`429`, `502`, `503`, `504`); nunca se devuelve un 500 genérico.
 
-### 6.4 Flujo de Git
+### 6.4 Contrato con el frontend
+
+* El frontend espera exactamente `{ explanation: string, language: string | null }`.
+* `language` va en **minúsculas** o `null`.
+* `MAX_CODE_LENGTH` (10.000) está duplicado a propósito en ambos lados: si cambia aquí, cambia en `codebook/src/core/domain/snippet.ts`.
+
+### 6.5 Flujo de Git
 
 * **PROHIBIDO hacer commits o push sin la aprobación explícita del usuario.**
 * **Flujo de ramas:** desarrollo en `develop`; merge a `main` solo tras aprobación.
 * **Mensajes de commit:** *Conventional Commits* en minúsculas y español (`feat: …`, `fix: …`, `chore: …`).
+
+---
+
+## 7. CI/CD y Despliegue
+
+* **CI**: `.github/workflows/ci-cd.yml` — ruff + pytest en push/PR a `main` y `develop`
+* **CD**: `.github/workflows/deploy.yml` — manual (`workflow_dispatch`), solo `main`
+* **Deploy**: Actions → `codebook-api Deploy` → Run workflow
+* **Autodeploy**: apagado; el deploy siempre es manual
+* **Secret**: `RAILWAY_TOKEN` (scope `production`)
+* **Variable**: `RAILWAY_PROJECT_ID` (y `RAILWAY_URL` opcional para smoke test)
+* **Railway**: Dockerfile, `PORT=8000`, Serverless, healthcheck `/health`
+* **Rollback**: Railway → Deployments → Redeploy
+* **Dokploy**: standby manual, sin CI
+* No usar `railway.toml` ni `railway.json` (Config-as-Code deprecado)
+* No commitear secretos ni `.env`
