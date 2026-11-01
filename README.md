@@ -61,7 +61,7 @@ Si `CODEBOOK_API_KEY` está vacío, el header no se exige. Eso es solo para desa
 
 ## Tecnologías Utilizadas
 
-- **Lenguaje**: Python 3.15.1
+- **Lenguaje**: Python 3
 - **Framework**: FastAPI + Uvicorn
 - **IA**: Groq (`openai/gpt-oss-20b`) mediante el SDK de OpenAI
 - **Configuración**: pydantic-settings
@@ -72,16 +72,17 @@ Si `CODEBOOK_API_KEY` está vacío, el header no se exige. Eso es solo para desa
 
 ## Despliegue
 
-El servicio corre en **Railway** con Serverless activo:
-[codebook-api-production-0be5.up.railway.app](https://codebook-api-production-0be5.up.railway.app)
+El servicio corre en **Railway** con Serverless activo.
+
+- **API:** [Codebook API](https://codebook-api-production-0be5.up.railway.app/health)
+- **Documentación:** [Swagger](https://codebook-api-production-0be5.up.railway.app/docs)
 
 Dokploy + Cloudflare Tunnel queda como respaldo manual:
-[codebook-api.fluxdv.icu](https://codebook-api.fluxdv.icu/)
+
+- **API:** [Codebook API (respaldo)](https://codebook-api.fluxdv.icu/health)
 
 ## Licencia
 
-Licencia de Uso Personal:
+[PolyForm Noncommercial 1.0.0](LICENSE). Uso personal y no comercial; el uso comercial requiere permiso.
 
-Este software es propiedad de **Ivan Cruz**. Se permite el uso de este software solo para fines personales y no comerciales. No se permite la distribución, modificación ni uso comercial de este software sin el consentimiento expreso de **Ivan Cruz**.
-
-Cualquier uso no autorizado puede resultar en acciones legales.
+© 2026 Ivan Cruz
