@@ -30,18 +30,15 @@ jobs:
   lint:
     name: Ruff
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Setup Python
-        uses: actions/setup-python@v7
+      - name: Setup Python env
+        uses: ./.github/actions/setup
         with:
           python-version: "3.15.1"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
 
       - name: Lint
         run: ruff check .
@@ -53,18 +50,15 @@ jobs:
   test:
     name: Pytest
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Setup Python
-        uses: actions/setup-python@v7
+      - name: Setup Python env
+        uses: ./.github/actions/setup
         with:
           python-version: "3.15.1"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
 
       - name: Run tests
         run: pytest -q
@@ -75,6 +69,7 @@ jobs:
     needs: [lint, test]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Opcional: agrega reviewers en Settings > Environments > production
     environment: production
     steps:

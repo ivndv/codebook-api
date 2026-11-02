@@ -15,7 +15,7 @@ on:
 # Cancela ejecuciones previas del mismo ref para no gastar minutos de CI
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Permisos mínimos: solo lectura del repositorio
 permissions:
@@ -26,23 +26,19 @@ jobs:
   lint:
     name: Ruff
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # 1. Clona el repositorio
       - name: Checkout code
         uses: actions/checkout@v7
 
-      # 2. Configura Python con caché de pip
-      - name: Setup Python
-        uses: actions/setup-python@v7
+      # 2. Configura Python con caché de pip e instala dependencias
+      - name: Setup Python env
+        uses: ./.github/actions/setup
         with:
           python-version: "3.15.1"
-          cache: pip
 
-      # 3. Instala dependencias de desarrollo
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
-
-      # 4. Verifica lint y formato
+      # 3. Verifica lint y formato
       - name: Lint
         run: ruff check .
 
@@ -53,22 +49,18 @@ jobs:
   test:
     name: Pytest
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       # 1. Clona el repositorio
       - name: Checkout code
         uses: actions/checkout@v7
 
-      # 2. Configura Python con caché de pip
-      - name: Setup Python
-        uses: actions/setup-python@v7
+      # 2. Configura Python con caché de pip e instala dependencias
+      - name: Setup Python env
+        uses: ./.github/actions/setup
         with:
           python-version: "3.15.1"
-          cache: pip
 
-      # 3. Instala dependencias de desarrollo
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
-
-      # 4. Ejecuta los tests (Groq va mockeado: no gasta cuota)
+      # 3. Ejecuta los tests (Groq va mockeado: no gasta cuota)
       - name: Run tests
         run: pytest -q
