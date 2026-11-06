@@ -34,7 +34,7 @@ Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren
 | **Config** | **pydantic-settings** | Variables de entorno tipadas |
 | **Tests** | **pytest** + httpx | IA mockeada (no gasta cuota) |
 | **Lint/Formato** | **ruff** | `line-length 100` |
-| **Deploy** | **Railway** | Manual vía GitHub Actions; **Serverless** activo |
+| **Deploy** | **Docker + Dokploy** | Webhook con Cloudflare Access; healthcheck `/health` |
 | **Python** | 3.15.1 | `.python-version` fija 3.15.1 |
 
 ## 4. Estructura del código
@@ -58,7 +58,7 @@ codebook-api/
 ├── pyproject.toml               → config de ruff y pytest
 ├── Dockerfile                   → imagen sin privilegios + healthcheck
 ├── .env.example                 → plantilla de variables
-└── .github/workflows/           → CI (ruff + pytest) + CD manual (Railway)
+└── .github/workflows/           → CI (ruff + pytest) + CD a Dokploy
 ```
 
 ## 5. Arquitectura y flujo de datos
@@ -162,14 +162,13 @@ python3 -m venv .venv
 
 ## 10. CI/CD
 
-- **CI**: `.github/workflows/ci-cd.yml` — ruff + pytest en push/PR a `main` y `develop`
-- **CD**: `.github/workflows/deploy.yml` — manual (`workflow_dispatch`), solo `main`
-- **Deploy**: Actions → `codebook-api Deploy` → Run workflow
-- **Autodeploy**: apagado; el deploy siempre es manual
-- **Secret**: `RAILWAY_TOKEN` (scope `production`)
-- **Variable**: `RAILWAY_PROJECT_ID` (y `RAILWAY_URL` opcional para smoke test)
-- **Railway**: Dockerfile, `PORT=8000`, Serverless, healthcheck `/health`
-- **Rollback**: Railway → Deployments → Redeploy
-- **Dokploy**: standby manual, sin CI
-- No usar `railway.toml` ni `railway.json` (Config-as-Code deprecado)
+- **CI/CD**: `.github/workflows/ci-cd.yml` — ruff + pytest en push/PR a `main` y `develop`
+- **Deploy**: job `Deploy to Dokploy`; corre en push a `main` o manual (`workflow_dispatch`)
+- **Dominio**: `https://codebook-api.fluxdv.icu`
+- **Autodeploy**: activo en `main` tras lint y pytest
+- **Secretos**: `DOKPLOY_DEPLOY_TOKEN`, `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`
+- **Dokploy**: Dockerfile, `PORT=8000`, healthcheck `/health`, webhook protegido con Cloudflare Access
+- **Smoke test**: el job espera hasta 5 min a que `/health` responda tras el deploy
+- **Rollback**: Dokploy → aplicación → Deployments → Redeploy de la versión anterior
+- **Vercel**: `CODEBOOK_API_URL` debe apuntar al dominio de Dokploy
 - No commitear secretos ni `.env`
