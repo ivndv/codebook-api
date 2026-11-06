@@ -98,7 +98,7 @@ jobs:
       - name: Smoke test
         run: |
           for i in $(seq 1 20); do
-            if curl -fsS --max-time 5 https://codebook-api.fluxdv.icu/health; then
+            if curl -fsS --max-time 5 https://codebook-api.liuma.app/health; then
               echo
               echo "codebook-api responde correctamente."
               exit 0
