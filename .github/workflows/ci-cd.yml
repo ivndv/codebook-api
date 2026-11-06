@@ -1,7 +1,7 @@
-# codebook-api CI: lint (ruff) y tests (pytest)
-name: codebook-api CI
+# codebook-api CI/CD: lint (ruff), tests (pytest) y deploy a Dokploy
+name: codebook-api CI/CD
 
-# Disparadores: pushes y pull requests a las ramas principales
+# Disparadores: pushes, pull requests y deploy manual
 on:
   push:
     branches:
@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - develop
+  workflow_dispatch:
 
 # Cancela ejecuciones previas del mismo ref para no gastar minutos de CI
 concurrency:
@@ -64,6 +65,49 @@ jobs:
       # 3. Ejecuta los tests (Groq va mockeado: no gasta cuota)
       - name: Run tests
         run: pytest -q
+
+  # Job 3: deploy a Dokploy (solo push o manual sobre main)
+  deploy:
+    name: Deploy to Dokploy
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      # Dispara el deploy en Dokploy vía webhook autenticado con Cloudflare Access
+      - name: Deploy via Dokploy webhook
+        env:
+          DOKPLOY_DEPLOY_TOKEN: ${{ secrets.DOKPLOY_DEPLOY_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent \
+            --retry 3 --retry-delay 5 --retry-connrefused \
+            -X POST "https://dokploy.fluxdv.icu/api/deploy/${DOKPLOY_DEPLOY_TOKEN}" \
+            -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
+            -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+            -H "x-github-event: push" \
+            -H "content-type: application/json" \
+            -d '{"ref":"refs/heads/main","commits":[{"added":[],"modified":["README.md"],"removed":[]}],"head_commit":{"message":"Deploy from CI"}}'
+          echo
+          echo "Deploy solicitado a Dokploy."
+
+      # Espera a que el servicio responda con la versión nueva
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 5 https://codebook-api.fluxdv.icu/health; then
+              echo
+              echo "codebook-api responde correctamente."
+              exit 0
+            fi
+            echo "Intento ${i}/20: aún no responde, esperando 15s..."
+            sleep 15
+          done
+          echo "El servicio no respondió a tiempo."
+          exit 1
 
   # ---------------------------------------------------------------------------
   # Escaneo de secretos. Workflow reutilizable definido en ivndv/.github
