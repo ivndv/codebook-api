@@ -54,9 +54,7 @@ def _cliente() -> AsyncOpenAI:
     )
 
 
-async def resumir_codigo(
-    code: str, locale: str = "es"
-) -> tuple[str, str | None]:
+async def resumir_codigo(code: str, locale: str = "es") -> tuple[str, str | None]:
     """Pide a la IA un resumen de una línea y el lenguaje detectado."""
     respuesta = await _cliente().chat.completions.create(
         model=settings.groq_model,
