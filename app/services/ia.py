@@ -6,17 +6,37 @@ from openai import AsyncOpenAI
 
 from app.core.config import settings
 
+# Idioma de salida que acepta la app
+_IDIOMAS = {"es": "Spanish", "en": "English"}
+
 _SISTEMA = (
-    "Resumes código para una app de snippets. Respondes SIEMPRE en español, "
-    "en una sola frase, sin markdown y sin repetir el código."
+    "You summarize code for a snippet app. "
+    "Write exactly one sentence, no markdown, and never repeat the code. "
+    "Keep identifiers and technical terms as they appear. "
+    "Always write the explanation in {language}."
 )
 
 _INSTRUCCIONES = (
-    "Devuelve un JSON con dos campos:\n"
-    '- "explanation": UNA frase en español que explique qué hace el código.\n'
-    '- "language": el lenguaje detectado en minúsculas (python, javascript, '
-    "typescript, sql...), o null si no lo sabes.\n"
+    "Return a JSON object with two fields:\n"
+    '- "explanation": ONE sentence in {language} explaining what the code does.\n'
+    '- "language": the detected programming language in lowercase '
+    "(python, javascript, typescript, sql...), or null if unknown.\n"
 )
+
+
+def _idioma(locale: str) -> str:
+    """Idioma de salida que se le pide a la IA."""
+    return _IDIOMAS.get(locale, "Spanish")
+
+
+def _sistema(locale: str) -> str:
+    """Instrucción de sistema con el idioma de salida."""
+    return _SISTEMA.format(language=_idioma(locale))
+
+
+def _instrucciones(locale: str) -> str:
+    """Instrucción de usuario con el idioma de salida."""
+    return _INSTRUCCIONES.format(language=_idioma(locale))
 
 
 @lru_cache(maxsize=1)
@@ -34,13 +54,18 @@ def _cliente() -> AsyncOpenAI:
     )
 
 
-async def resumir_codigo(code: str) -> tuple[str, str | None]:
+async def resumir_codigo(
+    code: str, locale: str = "es"
+) -> tuple[str, str | None]:
     """Pide a la IA un resumen de una línea y el lenguaje detectado."""
     respuesta = await _cliente().chat.completions.create(
         model=settings.groq_model,
         messages=[
-            {"role": "system", "content": _SISTEMA},
-            {"role": "user", "content": f"{_INSTRUCCIONES}\n```\n{code}\n```"},
+            {"role": "system", "content": _sistema(locale)},
+            {
+                "role": "user",
+                "content": f"{_instrucciones(locale)}\n```\n{code}\n```",
+            },
         ],
         response_format={"type": "json_object"},
         temperature=0.3,

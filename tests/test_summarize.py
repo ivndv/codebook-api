@@ -4,6 +4,7 @@ from openai import APIConnectionError, APITimeoutError, RateLimitError
 
 from app.main import app
 from app.routers import summarize as router_summarize
+from app.services import ia
 
 client = TestClient(app)
 
@@ -18,7 +19,7 @@ def _error_rate_limit() -> RateLimitError:
 def test_summarize_ok(monkeypatch) -> None:
     """Devuelve la explicación y el lenguaje que dio la IA (mockeada)."""
 
-    async def resumen_falso(code: str) -> tuple[str, str | None]:
+    async def resumen_falso(code: str, locale: str = "es") -> tuple[str, str | None]:
         return "Suma dos números.", "python"
 
     monkeypatch.setattr(router_summarize, "resumir_codigo", resumen_falso)
@@ -46,7 +47,7 @@ def test_summarize_codigo_vacio() -> None:
 def test_summarize_error_de_ia(monkeypatch) -> None:
     """Si la IA falla, se devuelve 502."""
 
-    async def explota(code: str) -> tuple[str, str | None]:
+    async def explota(code: str, locale: str = "es") -> tuple[str, str | None]:
         raise RuntimeError("boom")
 
     monkeypatch.setattr(router_summarize, "resumir_codigo", explota)
@@ -59,7 +60,7 @@ def test_summarize_error_de_ia(monkeypatch) -> None:
 def test_summarize_error_rate_limit(monkeypatch) -> None:
     """Si Groq limita, se devuelve 429."""
 
-    async def falla(code: str) -> tuple[str, str | None]:
+    async def falla(code: str, locale: str = "es") -> tuple[str, str | None]:
         raise _error_rate_limit()
 
     monkeypatch.setattr(router_summarize, "resumir_codigo", falla)
@@ -72,7 +73,7 @@ def test_summarize_error_rate_limit(monkeypatch) -> None:
 def test_summarize_error_timeout(monkeypatch) -> None:
     """Si Groq tarda demasiado, se devuelve 504."""
 
-    async def falla(code: str) -> tuple[str, str | None]:
+    async def falla(code: str, locale: str = "es") -> tuple[str, str | None]:
         request = Request("POST", "https://api.groq.com/openai/v1/chat/completions")
         raise APITimeoutError(request=request)
 
@@ -86,7 +87,7 @@ def test_summarize_error_timeout(monkeypatch) -> None:
 def test_summarize_error_conexion(monkeypatch) -> None:
     """Si no hay conexión con Groq, se devuelve 503."""
 
-    async def falla(code: str) -> tuple[str, str | None]:
+    async def falla(code: str, locale: str = "es") -> tuple[str, str | None]:
         request = Request("POST", "https://api.groq.com/openai/v1/chat/completions")
         raise APIConnectionError(request=request)
 
@@ -95,3 +96,33 @@ def test_summarize_error_conexion(monkeypatch) -> None:
     res = client.post("/summarize", json={"code": "print(1)"})
 
     assert res.status_code == 503
+
+
+def test_summarize_pasa_locale(monkeypatch) -> None:
+    """El locale del cliente llega al servicio de IA."""
+    capturado: dict[str, str] = {}
+
+    async def resumen_falso(code: str, locale: str = "es"):
+        capturado["locale"] = locale
+        return "Adds two numbers.", "python"
+
+    monkeypatch.setattr(router_summarize, "resumir_codigo", resumen_falso)
+
+    res = client.post("/summarize", json={"code": "a + b", "locale": "en"})
+
+    assert res.status_code == 200
+    assert capturado["locale"] == "en"
+
+
+def test_summarize_locale_invalido() -> None:
+    """Un locale no soportado lo rechaza la validación."""
+    res = client.post("/summarize", json={"code": "print(1)", "locale": "fr"})
+
+    assert res.status_code == 422
+
+
+def test_prompt_segun_locale() -> None:
+    """El prompt pide la explicación en el idioma del locale."""
+    assert "English" in ia._sistema("en")
+    assert "Spanish" in ia._sistema("es")
+    assert "English" in ia._instrucciones("en")

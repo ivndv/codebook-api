@@ -28,7 +28,7 @@ def test_api_key_incorrecta(monkeypatch) -> None:
 def test_api_key_correcta(monkeypatch) -> None:
     """Con la X-API-Key correcta pasa."""
 
-    async def resumen_falso(code: str) -> tuple[str, str | None]:
+    async def resumen_falso(code: str, locale: str = "es") -> tuple[str, str | None]:
         return "Imprime un uno.", "python"
 
     monkeypatch.setattr(settings, "codebook_api_key", "secreto")

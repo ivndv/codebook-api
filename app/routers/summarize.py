@@ -21,7 +21,9 @@ async def summarize(peticion: PeticionResumen) -> RespuestaResumen:
 
     # 2. Pide el resumen a la IA y traduce sus fallos a HTTP
     try:
-        explanation, language = await resumir_codigo(peticion.code)
+        explanation, language = await resumir_codigo(
+            peticion.code, peticion.locale
+        )
     except RateLimitError as exc:
         raise HTTPException(
             status_code=429,
