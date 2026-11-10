@@ -40,7 +40,7 @@ Microservicio en Python que recibe un fragmento de código y devuelve un resumen
 El consumidor único es el backend de Codebook, que llama desde el servidor:
 
 ```bash
-curl -X POST http://localhost:8000/summarize \
+curl -X POST http://localhost:8100/summarize \
   -H "X-API-Key: tu_secreto" \
   -H "Content-Type: application/json" \
   -d '{"code": "def suma(a, b):\n    return a + b"}'

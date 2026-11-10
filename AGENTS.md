@@ -123,7 +123,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
 
 # Servidor con recarga
-.venv/bin/uvicorn app.main:app --reload
+.venv/bin/uvicorn app.main:app --reload --port 8100
 
 # Lint
 .venv/bin/ruff check .

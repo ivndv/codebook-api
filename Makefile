@@ -5,7 +5,7 @@ help: ## Muestra esta ayuda
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-8s\033[0m %s\n", $$1, $$2}'
 
 dev: ## Arranca el servidor con recarga automática
-	.venv/bin/uvicorn app.main:app --reload
+	.venv/bin/uvicorn app.main:app --reload --port 8100
 
 test: ## Corre los tests
 	.venv/bin/pytest -q
@@ -18,10 +18,10 @@ format: ## Formatea el código
 	.venv/bin/ruff format .
 
 docs: ## Abre la documentación (Swagger) en el navegador
-	xdg-open http://localhost:8000/docs
+	xdg-open http://localhost:8100/docs
 
 docker-build: ## Construye la imagen local
 	docker build -t codebook-api .
 
 docker-run: ## Corre la imagen local con el .env
-	docker run --rm -p 8000:8000 --env-file .env codebook-api
+	docker run --rm -p 8100:8000 --env-file .env codebook-api
