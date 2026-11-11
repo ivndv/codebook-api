@@ -79,7 +79,7 @@ El servicio corre en **Railway** con Serverless activo.
 
 Dokploy + Cloudflare Tunnel queda como respaldo manual:
 
-- **API:** [Codebook API (respaldo)](https://codebook-api.fluxdv.icu/health)
+- **API:** [Codebook API (respaldo)](https://codebook-api.liuma.app/health)
 
 ## Licencia
 
